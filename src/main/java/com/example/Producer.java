@@ -2,14 +2,19 @@ package com.example;
 
 import com.google.common.io.Resources;
 import com.gurps.avro.Person;
+import com.namics.commons.random.RandomData;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.util.Properties;
+import java.util.UUID;
+import java.util.stream.IntStream;
 
 import static com.gurps.avro.Gender.MALE;
+import static java.time.format.DateTimeFormatter.ISO_DATE;
 
 public class Producer {
 
@@ -22,33 +27,35 @@ public class Producer {
         }
 
         try {
+            IntStream.range(1, 100).forEach(__ -> {
 
-            Person person = Person.newBuilder()
-                                  .setId(1)
-                                  .setFirstName("fred")
-                                  .setLastName("flintstone")
-                                  .setEmailAddress("fred.flintstone@bedrock.com")
-                                  .setJoinDate("2017-06-01")
-                                  .setBirthdate("1982-01-12")
-                                  .setPhoneNumber("91822")
-                                  .setMiddleName("bernard")
-                                  .setSex(MALE)
-                                  .setSiblings(2)
-                                  .setUsername("fredflintstone")
-                                  .build();
+                Person person = Person.newBuilder()
+                                      .setId(UUID.randomUUID().toString())
+                                      .setFirstName(RandomData.firstname())
+                                      .setLastName(RandomData.lastname())
+                                      .setEmailAddress(RandomData.email())
+                                      .setJoinDate(ISO_DATE.format(RandomData.random(LocalDate.class)))
+                                      .setBirthdate(ISO_DATE.format(RandomData.random(LocalDate.class)))
+                                      .setPhoneNumber(RandomData.random(String.class, "tel"))
+                                      .setMiddleName(RandomData.lastname())
+                                      .setSex(MALE)
+                                      .setSiblings(RandomData.randomInteger())
+                                      .setUsername(RandomData.randomString())
+                                      .build();
 
-            final ProducerRecord<String, Person> record = new ProducerRecord<>(
-                "my-new-topic", // topic
-                "user_id_" + 2, // key
-                person);
+                final ProducerRecord<String, Person> record = new ProducerRecord<>(
+                    "people", // topic
+                    person.getId(), // key
+                    person);
 
-            producer.send(record, (metaData, exception) -> {
-                if (metaData != null) {
-                    System.out.printf("sent record(key=%s value=%s) " + "meta(partition=%d, offset=%d\n",
-                                      record.key(), record.value(), metaData.partition(), metaData.offset());
-                } else {
-                    exception.printStackTrace();
-                }
+                producer.send(record, (metaData, exception) -> {
+                    if (metaData != null) {
+                        System.out.printf("sent record(key=%s value=%s) " + "meta(partition=%d, offset=%d\n",
+                                          record.key(), record.value(), metaData.partition(), metaData.offset());
+                    } else {
+                        exception.printStackTrace();
+                    }
+                });
             });
         } catch (Throwable throwable) {
             System.out.println(throwable.getStackTrace());
